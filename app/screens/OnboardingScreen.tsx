@@ -1,5 +1,5 @@
 import { StatusBar } from "expo-status-bar";
-import React, { useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
@@ -40,6 +40,30 @@ const slides = [
 export default function OnboardingScreen({ navigation }: any) {
   const scrollX = useRef(new Animated.Value(0)).current;
   const flatListRef = useRef<Animated.FlatList<any>>(null);
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  // Auto-scroll effect
+  useEffect(() => {
+    const interval = setInterval(() => {
+      let nextIndex = currentIndex + 1;
+      if (nextIndex >= slides.length) {
+        nextIndex = 0;
+      }
+      flatListRef.current?.scrollToOffset({
+        offset: nextIndex * width,
+        animated: true,
+      });
+      setCurrentIndex(nextIndex);
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [currentIndex]);
+
+  // Update currentIndex on manual scroll
+  const onMomentumScrollEnd = (event: any) => {
+    const index = Math.round(event.nativeEvent.contentOffset.x / width);
+    setCurrentIndex(index);
+  };
 
   return (
     <View style={{ flex: 1 }}>
@@ -57,6 +81,7 @@ export default function OnboardingScreen({ navigation }: any) {
           [{ nativeEvent: { contentOffset: { x: scrollX } } }],
           { useNativeDriver: false }
         )}
+        onMomentumScrollEnd={onMomentumScrollEnd}
         renderItem={({ item }) => (
           <ImageBackground source={item.image} style={styles.background}>
             <View style={styles.overlay}>
@@ -139,7 +164,7 @@ const styles = StyleSheet.create({
   },
   title: {
     maxWidth: width * 0.8,
-    fontSize: width * 0.085,
+    fontSize: width * 0.08,
     fontWeight: "700",
     color: "#fff",
     marginBottom: 12,
