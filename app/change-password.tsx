@@ -54,10 +54,8 @@ const ChangePasswordScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Stack.Screen options={{ title: "Change Password", headerShown: true }} />
+      <Stack.Screen options={{ headerShown: true }} />
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.title}>Change Password</Text>
-
         <View style={styles.inputContainer}>
           <Text style={styles.label}>New Password</Text>
           <TextInput

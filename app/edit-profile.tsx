@@ -72,8 +72,6 @@ const EditProfileScreen = () => {
     <SafeAreaView style={styles.container}>
       <Stack.Screen options={{ title: "Edit Profile", headerShown: true }} />
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.title}>Edit Profile</Text>
-
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Name</Text>
           <TextInput

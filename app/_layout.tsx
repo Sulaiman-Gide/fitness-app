@@ -16,6 +16,7 @@ import AuthProvider from "@/components/AuthProvider";
 import { ToastProvider } from "@/components/ToastProvider";
 import Colors from "@/constants/Colors";
 import { useColorScheme } from "@/hooks/useColorScheme";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 import store from "@/store";
 
 export {
@@ -79,6 +80,7 @@ export default function RootLayout() {
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
+  usePushNotifications();
 
   return (
     <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
