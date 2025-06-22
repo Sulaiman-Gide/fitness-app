@@ -4,12 +4,13 @@ import Colors from "@/constants/Colors";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -47,46 +48,17 @@ const WorkoutsScreen = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [templates, setTemplates] = useState<WorkoutTemplate[]>([]);
-  const [groupedWorkouts, setGroupedWorkouts] = useState<
-    Record<string, WorkoutTemplate[]>
-  >({});
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearchActive, setIsSearchActive] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("All");
 
   const fetchWorkoutTemplates = async () => {
     try {
       let query = supabase.from("workout_templates").select("*");
 
-      if (selectedCategory !== "All") {
-        query = query.eq("category", selectedCategory);
-      }
-
       const { data, error } = await query.order("name", { ascending: true });
       if (error) throw error;
-
-      const shuffledData = shuffleArray(data);
-
-      if (selectedCategory === "All") {
-        const groups = shuffledData.reduce((acc, workout) => {
-          const { category } = workout;
-          if (!acc[category]) {
-            acc[category] = [];
-          }
-          acc[category].push(workout);
-          return acc;
-        }, {} as Record<string, WorkoutTemplate[]>);
-
-        // To maintain a consistent and logical order for categories
-        const orderedGroups: Record<string, WorkoutTemplate[]> = {};
-        workoutCategories.slice(1).forEach((category) => {
-          if (groups[category]) {
-            orderedGroups[category] = groups[category];
-          }
-        });
-        setGroupedWorkouts(orderedGroups);
-      } else {
-        setGroupedWorkouts({ [selectedCategory]: shuffledData });
-      }
-      setTemplates(data); // Keep the flat list for total count and empty state check
+      setTemplates(data);
     } catch (error) {
       console.error("Error fetching workout templates:", error);
     } finally {
@@ -97,12 +69,50 @@ const WorkoutsScreen = () => {
   useEffect(() => {
     setLoading(true);
     fetchWorkoutTemplates();
-  }, [selectedCategory]);
+  }, []);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     fetchWorkoutTemplates().finally(() => setRefreshing(false));
-  }, [selectedCategory]);
+  }, []);
+
+  const filteredWorkouts = useMemo(() => {
+    let filtered = templates;
+
+    if (selectedCategory !== "All") {
+      filtered = filtered.filter((t) => t.category === selectedCategory);
+    }
+
+    if (searchQuery) {
+      filtered = filtered.filter((t) =>
+        t.name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+    return filtered;
+  }, [templates, selectedCategory, searchQuery]);
+
+  const groupedWorkouts = useMemo(() => {
+    if (selectedCategory !== "All" || searchQuery) {
+      return { All: filteredWorkouts };
+    }
+
+    const groups = filteredWorkouts.reduce((acc, workout) => {
+      const { category } = workout;
+      if (!acc[category]) {
+        acc[category] = [];
+      }
+      acc[category].push(workout);
+      return acc;
+    }, {} as Record<string, WorkoutTemplate[]>);
+
+    const orderedGroups: Record<string, WorkoutTemplate[]> = {};
+    workoutCategories.slice(1).forEach((category) => {
+      if (groups[category]) {
+        orderedGroups[category] = groups[category];
+      }
+    });
+    return orderedGroups;
+  }, [filteredWorkouts, selectedCategory, searchQuery]);
 
   const CategoryChip = ({ category }: { category: string }) => (
     <TouchableOpacity
@@ -173,23 +183,43 @@ const WorkoutsScreen = () => {
         }
       >
         <View style={styles.header}>
-          <Text style={styles.title}>Discover Workouts</Text>
-          <TouchableOpacity style={styles.searchButton}>
-            <Ionicons name="search" size={24} color={Colors.text.primary} />
+          {!isSearchActive ? (
+            <Text style={styles.title}>Discover Workouts</Text>
+          ) : (
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search workouts..."
+              placeholderTextColor={Colors.text.tertiary}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              autoFocus
+            />
+          )}
+          <TouchableOpacity
+            style={styles.searchButton}
+            onPress={() => setIsSearchActive(!isSearchActive)}
+          >
+            <Ionicons
+              name={isSearchActive ? "close" : "search"}
+              size={24}
+              color={Colors.text.primary}
+            />
           </TouchableOpacity>
         </View>
 
-        <View style={styles.categoriesContainer}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 24 }}
-          >
-            {workoutCategories.map((category) => (
-              <CategoryChip key={category} category={category} />
-            ))}
-          </ScrollView>
-        </View>
+        {!searchQuery && (
+          <View style={styles.categoriesContainer}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 24 }}
+            >
+              {workoutCategories.map((category) => (
+                <CategoryChip key={category} category={category} />
+              ))}
+            </ScrollView>
+          </View>
+        )}
 
         {loading && !refreshing ? (
           <View style={styles.workoutsList}>
@@ -197,11 +227,20 @@ const WorkoutsScreen = () => {
               <WorkoutCardSkeleton key={index} delay={index * 150} />
             ))}
           </View>
-        ) : templates.length > 0 ? (
+        ) : filteredWorkouts.length > 0 ? (
           <View style={styles.workoutsContainer}>
             {Object.entries(groupedWorkouts).map(([category, workouts]) => (
-              <View key={category} style={styles.categoryGroup}>
-                <Text style={styles.categoryTitle}>{category}</Text>
+              <View
+                key={category}
+                style={
+                  category === "All"
+                    ? styles.allCategoryGroup
+                    : styles.categoryGroup
+                }
+              >
+                {category !== "All" && (
+                  <Text style={styles.categoryTitle}>{category}</Text>
+                )}
                 {workouts.map((template) => (
                   <WorkoutCard key={template.id} template={template} />
                 ))}
@@ -210,7 +249,9 @@ const WorkoutsScreen = () => {
           </View>
         ) : (
           <View style={styles.emptyStateContainer}>
-            <Text style={styles.emptyStateText}>No workouts found.</Text>
+            <Text style={styles.emptyStateText}>
+              No workouts found for "{searchQuery}"
+            </Text>
           </View>
         )}
       </ScrollView>
@@ -235,6 +276,13 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontFamily: "BeVietnamPro-Bold",
     color: Colors.text.primary,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 22,
+    fontFamily: "BeVietnamPro-Regular",
+    color: Colors.text.primary,
+    marginRight: 15,
   },
   searchButton: {
     backgroundColor: Colors.background.card,
@@ -267,11 +315,12 @@ const styles = StyleSheet.create({
   },
   workoutsContainer: {
     paddingHorizontal: 24,
-    gap: 30,
-    marginTop: 20,
   },
   categoryGroup: {
-    gap: 16,
+    marginBottom: 20,
+  },
+  allCategoryGroup: {
+    marginBottom: 0,
   },
   categoryTitle: {
     fontSize: 22,

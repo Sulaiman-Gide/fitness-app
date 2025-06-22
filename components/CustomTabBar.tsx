@@ -63,6 +63,7 @@ export function CustomTabBar({ state, descriptors, navigation }: any) {
 
         const iconSet = TAB_ICONS[route.name];
         const IconComponent = isFocused ? iconSet?.focused : iconSet?.unfocused;
+        const iconSize = route.name === "workouts" ? 31 : 26;
 
         const onPress = () => {
           const event = navigation.emit({
@@ -86,7 +87,7 @@ export function CustomTabBar({ state, descriptors, navigation }: any) {
             onPress={onPress}
             style={styles.tabButton}
           >
-            <IconComponent width={26} height={26} />
+            <IconComponent width={iconSize} height={iconSize} />
             <Text
               style={[
                 styles.label,

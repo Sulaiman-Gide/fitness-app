@@ -59,12 +59,10 @@ const ProfileScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Profile</Text>
-          <Text style={styles.subtitle}>Your fitness journey</Text>
-        </View>
-
+      <ScrollView
+        contentContainerStyle={styles.scrollContainer}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.profileSection}>
           <View style={styles.avatarContainer}>
             <View style={styles.avatar}>
@@ -94,7 +92,10 @@ const ProfileScreen = () => {
           <View style={styles.actionsSection}>
             <Text style={styles.sectionTitle}>Actions</Text>
 
-            <TouchableOpacity style={styles.actionButton}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => router.push("/settings")}
+            >
               <Ionicons
                 name="settings-outline"
                 size={20}
@@ -108,7 +109,10 @@ const ProfileScreen = () => {
               />
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionButton}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => router.push("/help")}
+            >
               <Ionicons
                 name="help-circle-outline"
                 size={20}
@@ -122,7 +126,10 @@ const ProfileScreen = () => {
               />
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionButton}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => router.push("/privacy")}
+            >
               <Ionicons
                 name="document-text-outline"
                 size={20}
@@ -136,7 +143,10 @@ const ProfileScreen = () => {
               />
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionButton}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => router.push("/terms")}
+            >
               <Ionicons
                 name="document-outline"
                 size={20}
@@ -168,22 +178,8 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     padding: 20,
-  },
-  header: {
-    alignItems: "center",
-    marginBottom: 30,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: Colors.text.primary,
-    fontFamily: "BeVietnamPro-Bold",
-  },
-  subtitle: {
-    fontSize: 16,
-    color: Colors.text.secondary,
-    marginTop: 4,
-    fontFamily: "BeVietnamPro-Regular",
+    paddingTop: 50,
+    paddingBottom: 100,
   },
   profileSection: {
     flex: 1,
@@ -269,10 +265,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 16,
-    backgroundColor: Colors.background.card,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Colors.error,
   },
   logoutButtonText: {
     fontSize: 16,

@@ -2,9 +2,9 @@ import { supabase } from "@/config/supabase";
 import Colors from "@/constants/Colors";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
+import LottieView from "lottie-react-native";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  ActivityIndicator,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -273,7 +273,12 @@ const HomeScreen = () => {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.primary.main} />
+        <LottieView
+          source={require("../../assets/Lottie/appLoadingWhite.json")}
+          autoPlay
+          loop
+          style={{ width: 40, height: 40 }}
+        />
       </View>
     );
   }
