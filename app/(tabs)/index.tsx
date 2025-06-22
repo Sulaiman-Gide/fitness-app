@@ -1,7 +1,7 @@
 import { supabase } from "@/config/supabase";
 import Colors from "@/constants/Colors";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -27,28 +27,30 @@ import ProgressOutline from "@/assets/images/progress-outline.svg";
 import WorkoutsOutline from "@/assets/images/workouts-outline.svg";
 
 interface Workout {
-  id: number;
+  id: string;
   name: string;
   created_at: string;
   duration_minutes: number;
   calories_burned: number;
 }
 
-const getDynamicGreeting = (hasCompletedWorkout: boolean) => {
+const getDynamicGreeting = (hasWorkedOut: boolean) => {
   const hour = new Date().getHours();
-  let greeting = "Good morning!";
-  let subtitle = "Ready for your workout today?";
+  let greeting;
 
-  if (hour >= 12 && hour < 18) {
-    greeting = "Good afternoon!";
-    subtitle = hasCompletedWorkout
-      ? "Great work on your session today!"
-      : "Ready to finish up your morning workout?";
-  } else if (hour >= 18) {
-    greeting = "Good evening!";
-    subtitle = hasCompletedWorkout
-      ? "You've earned a good rest!"
-      : "Time to wrap up today's workout!";
+  if (hour < 12) {
+    greeting = "Good Morning";
+  } else if (hour < 18) {
+    greeting = "Good Afternoon";
+  } else {
+    greeting = "Good Evening";
+  }
+
+  let subtitle;
+  if (hasWorkedOut) {
+    subtitle = "You've crushed it today! Keep going.";
+  } else {
+    subtitle = "Ready to start your day with a workout?";
   }
 
   return { greeting, subtitle };
@@ -56,24 +58,21 @@ const getDynamicGreeting = (hasCompletedWorkout: boolean) => {
 
 const quickActions = [
   {
-    id: "start_workout",
-    title: "Workouts",
+    id: "start-workout",
+    title: "Start Empty Workout",
     Icon: WorkoutsOutline,
-    color: Colors.primary.main,
+    route: "/active-workout",
+  },
+  {
+    id: "browse-workouts",
+    title: "Browse Workouts",
+    Icon: ProgressOutline,
     route: "/(tabs)/workouts",
   },
   {
-    id: "view_progress",
-    title: "Progress",
-    Icon: ProgressOutline,
-    color: Colors.primary.main,
-    route: "/(tabs)/progress",
-  },
-  {
-    id: "set_goals",
+    id: "set-goals",
     title: "Set Goals",
     Icon: ProfileOutline,
-    color: Colors.primary.main,
     route: "/goals",
   },
 ];
@@ -104,12 +103,12 @@ const HomeScreen = () => {
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
 
-      // Fetch today's progress
+      // Fetch today's progress from workout_history
       const { data: progressData, error: progressError } = await supabase
-        .from("workouts")
-        .select("duration_minutes, calories_burned")
+        .from("workout_history")
+        .select("duration_seconds, calories_burned")
         .eq("user_id", user.id)
-        .gte("created_at", todayStart.toISOString());
+        .gte("completed_at", todayStart.toISOString());
 
       if (progressError) throw progressError;
 
@@ -117,9 +116,8 @@ const HomeScreen = () => {
         (sum, w) => sum + (w.calories_burned || 0),
         0
       );
-      const totalTime = progressData.reduce(
-        (sum, w) => sum + (w.duration_minutes || 0),
-        0
+      const totalTime = Math.round(
+        progressData.reduce((sum, w) => sum + (w.duration_seconds || 0), 0) / 60
       );
       setTodaysProgress({
         workouts: progressData.length,
@@ -127,16 +125,24 @@ const HomeScreen = () => {
         time: totalTime,
       });
 
-      // Fetch recent workouts
+      // Fetch recent workouts from workout_history
       const { data: recentData, error: recentError } = await supabase
-        .from("workouts")
-        .select("*")
+        .from("workout_history")
+        .select("*, workout_templates(name)")
         .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
+        .order("completed_at", { ascending: false })
         .limit(5);
 
       if (recentError) throw recentError;
-      setRecentWorkouts(recentData);
+
+      const formattedRecent = recentData.map((item: any) => ({
+        id: item.id,
+        name: item.workout_templates?.name || "Freestyle Workout",
+        created_at: item.completed_at,
+        duration_minutes: Math.round(item.duration_seconds / 60),
+        calories_burned: item.calories_burned,
+      }));
+      setRecentWorkouts(formattedRecent);
     } catch (error) {
       console.error("Error fetching home screen data:", error);
     } finally {
@@ -155,10 +161,12 @@ const HomeScreen = () => {
     slideAnim.value = withSpring(0, { damping: 15, stiffness: 100 });
   }, [todaysProgress]);
 
-  useEffect(() => {
-    setLoading(true);
-    fetchData();
-  }, [user]);
+  useFocusEffect(
+    useCallback(() => {
+      setLoading(true);
+      fetchData();
+    }, [])
+  );
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -188,7 +196,7 @@ const HomeScreen = () => {
     value,
     label,
   }: {
-    icon: any;
+    icon: React.ComponentProps<typeof Ionicons>["name"];
     value: string | number;
     label: string;
   }) => (
@@ -199,8 +207,17 @@ const HomeScreen = () => {
     </View>
   );
 
-  const WorkoutCard = ({ workout }: any) => (
-    <TouchableOpacity style={styles.workoutCard} activeOpacity={0.8}>
+  const WorkoutCard = ({ workout }: { workout: Workout }) => (
+    <TouchableOpacity
+      style={styles.workoutCard}
+      activeOpacity={0.8}
+      onPress={() =>
+        router.push({
+          pathname: "/workout-detail",
+          params: { id: workout.id, fromHistory: "true" },
+        })
+      }
+    >
       <View>
         <Text style={styles.workoutName}>{workout.name}</Text>
         <Text style={styles.workoutDate}>
@@ -267,11 +284,7 @@ const HomeScreen = () => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={Colors.primary.main}
-          />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
         <Animated.View style={[styles.content, animatedStyle]}>
@@ -398,11 +411,12 @@ const styles = StyleSheet.create({
   },
   quickActionsGrid: {
     flexDirection: "row",
+    flexWrap: "wrap",
     justifyContent: "space-between",
-    gap: 16,
+    rowGap: 16,
   },
   quickActionCard: {
-    flex: 1,
+    width: "48%",
     backgroundColor: Colors.background.card,
     borderRadius: 20,
     padding: 16,
@@ -427,6 +441,7 @@ const styles = StyleSheet.create({
     fontFamily: "BeVietnamPro-Bold",
     fontSize: 14,
     color: Colors.text.primary,
+    textAlign: "center",
   },
   statsContainer: {
     marginBottom: 32,
@@ -434,14 +449,17 @@ const styles = StyleSheet.create({
   statsGrid: {
     flexDirection: "row",
     justifyContent: "space-between",
+    flexWrap: "wrap",
+    rowGap: 16,
+    marginTop: 8,
   },
   statCard: {
-    flex: 1,
+    width: "48%",
     backgroundColor: Colors.background.card,
     borderRadius: 20,
-    padding: 20,
+    paddingVertical: 20,
+    paddingHorizontal: 10,
     alignItems: "center",
-    marginHorizontal: 8,
   },
   statValue: {
     fontFamily: "BeVietnamPro-Bold",
@@ -475,14 +493,14 @@ const styles = StyleSheet.create({
   workoutCard: {
     backgroundColor: Colors.background.card,
     borderRadius: 16,
-    padding: 20,
+    padding: 16,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
   workoutName: {
     fontFamily: "BeVietnamPro-Bold",
-    fontSize: 18,
+    fontSize: 16,
     color: Colors.text.primary,
     marginBottom: 8,
   },

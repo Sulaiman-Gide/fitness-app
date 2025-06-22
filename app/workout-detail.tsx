@@ -79,6 +79,7 @@ const WorkoutDetailScreen = () => {
             source={{ uri: workout.media_url }}
             style={styles.media}
             contentFit="cover"
+            transition={500}
           />
           <View style={styles.mediaOverlay} />
           <TouchableOpacity
@@ -156,7 +157,7 @@ const styles = StyleSheet.create({
     color: Colors.text.secondary,
   },
   mediaContainer: {
-    height: 300,
+    height: 400,
     position: "relative",
   },
   media: {

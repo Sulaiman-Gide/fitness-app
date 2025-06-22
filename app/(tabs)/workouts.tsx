@@ -33,22 +33,60 @@ const workoutCategories = [
   "Mindfulness",
 ];
 
+const shuffleArray = <T,>(array: T[]): T[] => {
+  const newArray = [...array];
+  for (let i = newArray.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+  }
+  return newArray;
+};
+
 const WorkoutsScreen = () => {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [templates, setTemplates] = useState<WorkoutTemplate[]>([]);
+  const [groupedWorkouts, setGroupedWorkouts] = useState<
+    Record<string, WorkoutTemplate[]>
+  >({});
   const [selectedCategory, setSelectedCategory] = useState("All");
 
   const fetchWorkoutTemplates = async () => {
     try {
       let query = supabase.from("workout_templates").select("*");
+
       if (selectedCategory !== "All") {
         query = query.eq("category", selectedCategory);
       }
+
       const { data, error } = await query.order("name", { ascending: true });
       if (error) throw error;
-      setTemplates(data);
+
+      const shuffledData = shuffleArray(data);
+
+      if (selectedCategory === "All") {
+        const groups = shuffledData.reduce((acc, workout) => {
+          const { category } = workout;
+          if (!acc[category]) {
+            acc[category] = [];
+          }
+          acc[category].push(workout);
+          return acc;
+        }, {} as Record<string, WorkoutTemplate[]>);
+
+        // To maintain a consistent and logical order for categories
+        const orderedGroups: Record<string, WorkoutTemplate[]> = {};
+        workoutCategories.slice(1).forEach((category) => {
+          if (groups[category]) {
+            orderedGroups[category] = groups[category];
+          }
+        });
+        setGroupedWorkouts(orderedGroups);
+      } else {
+        setGroupedWorkouts({ [selectedCategory]: shuffledData });
+      }
+      setTemplates(data); // Keep the flat list for total count and empty state check
     } catch (error) {
       console.error("Error fetching workout templates:", error);
     } finally {
@@ -60,9 +98,6 @@ const WorkoutsScreen = () => {
     setLoading(true);
     fetchWorkoutTemplates();
   }, [selectedCategory]);
-
-  // Add debugging
-  console.log("Loading state:", loading, "Templates count:", templates.length);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -103,6 +138,7 @@ const WorkoutsScreen = () => {
         source={{ uri: template.media_url }}
         style={styles.workoutImage}
         contentFit="cover"
+        transition={500}
       />
       <View style={styles.workoutImageOverlay} />
       <View style={styles.workoutContent}>
@@ -157,14 +193,19 @@ const WorkoutsScreen = () => {
 
         {loading && !refreshing ? (
           <View style={styles.workoutsList}>
-            {[...Array(3)].map((_, index) => (
+            {[...Array(5)].map((_, index) => (
               <WorkoutCardSkeleton key={index} delay={index * 150} />
             ))}
           </View>
         ) : templates.length > 0 ? (
-          <View style={styles.workoutsList}>
-            {templates.map((template) => (
-              <WorkoutCard key={template.id} template={template} />
+          <View style={styles.workoutsContainer}>
+            {Object.entries(groupedWorkouts).map(([category, workouts]) => (
+              <View key={category} style={styles.categoryGroup}>
+                <Text style={styles.categoryTitle}>{category}</Text>
+                {workouts.map((template) => (
+                  <WorkoutCard key={template.id} template={template} />
+                ))}
+              </View>
             ))}
           </View>
         ) : (
@@ -223,6 +264,20 @@ const styles = StyleSheet.create({
   },
   categoryChipTextActive: {
     color: "#FFF",
+  },
+  workoutsContainer: {
+    paddingHorizontal: 24,
+    gap: 30,
+    marginTop: 20,
+  },
+  categoryGroup: {
+    gap: 16,
+  },
+  categoryTitle: {
+    fontSize: 22,
+    fontFamily: "BeVietnamPro-Bold",
+    color: Colors.text.primary,
+    textTransform: "capitalize",
   },
   workoutsList: {
     paddingHorizontal: 24,
