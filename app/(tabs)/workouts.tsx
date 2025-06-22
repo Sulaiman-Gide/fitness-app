@@ -1,150 +1,123 @@
+import WorkoutCardSkeleton from "@/components/WorkoutCardSkeleton";
+import { supabase } from "@/config/supabase";
 import Colors from "@/constants/Colors";
 import { Ionicons } from "@expo/vector-icons";
-import React from "react";
+import { Image } from "expo-image";
+import { useRouter } from "expo-router";
+import React, { useCallback, useEffect, useState } from "react";
 import {
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-  withTiming,
-} from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const workoutCategories = [
-  {
-    id: "strength",
-    title: "Strength Training",
-    subtitle: "Build muscle and power",
-    icon: "barbell",
-    color: "#4CAF50",
-    exercises: 24,
-  },
-  {
-    id: "cardio",
-    title: "Cardio",
-    subtitle: "Improve endurance",
-    icon: "heart",
-    color: "#F44336",
-    exercises: 18,
-  },
-  {
-    id: "flexibility",
-    title: "Flexibility",
-    subtitle: "Enhance mobility",
-    icon: "body",
-    color: "#2196F3",
-    exercises: 12,
-  },
-  {
-    id: "hiit",
-    title: "HIIT",
-    subtitle: "High intensity training",
-    icon: "flash",
-    color: "#FF9800",
-    exercises: 15,
-  },
-];
+interface WorkoutTemplate {
+  id: number;
+  name: string;
+  category: string;
+  difficulty: string;
+  estimated_duration_minutes: number;
+  media_url: string;
+}
 
-const popularWorkouts = [
-  {
-    id: "1",
-    name: "Full Body Blast",
-    category: "Strength",
-    duration: "45 min",
-    difficulty: "Intermediate",
-    rating: 4.8,
-  },
-  {
-    id: "2",
-    name: "Cardio Kickboxing",
-    category: "Cardio",
-    duration: "30 min",
-    difficulty: "Beginner",
-    rating: 4.6,
-  },
-  {
-    id: "3",
-    name: "Yoga Flow",
-    category: "Flexibility",
-    duration: "40 min",
-    difficulty: "All Levels",
-    rating: 4.9,
-  },
-  {
-    id: "4",
-    name: "Tabata Training",
-    category: "HIIT",
-    duration: "20 min",
-    difficulty: "Advanced",
-    rating: 4.7,
-  },
+const workoutCategories = [
+  "All",
+  "Strength",
+  "Cardio",
+  "HIIT",
+  "Flexibility",
+  "Mindfulness",
 ];
 
 const WorkoutsScreen = () => {
-  const fadeAnim = useSharedValue(0);
-  const slideAnim = useSharedValue(50);
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [templates, setTemplates] = useState<WorkoutTemplate[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState("All");
 
-  React.useEffect(() => {
-    fadeAnim.value = withTiming(1, { duration: 1000 });
-    slideAnim.value = withSpring(0, { damping: 15, stiffness: 100 });
-  }, []);
+  const fetchWorkoutTemplates = async () => {
+    try {
+      let query = supabase.from("workout_templates").select("*");
+      if (selectedCategory !== "All") {
+        query = query.eq("category", selectedCategory);
+      }
+      const { data, error } = await query.order("name", { ascending: true });
+      if (error) throw error;
+      setTemplates(data);
+    } catch (error) {
+      console.error("Error fetching workout templates:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    opacity: fadeAnim.value,
-    transform: [{ translateY: slideAnim.value }],
-  }));
+  useEffect(() => {
+    setLoading(true);
+    fetchWorkoutTemplates();
+  }, [selectedCategory]);
 
-  const CategoryCard = ({ category }: any) => (
-    <TouchableOpacity style={styles.categoryCard} activeOpacity={0.8}>
-      <View
+  // Add debugging
+  console.log("Loading state:", loading, "Templates count:", templates.length);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchWorkoutTemplates().finally(() => setRefreshing(false));
+  }, [selectedCategory]);
+
+  const CategoryChip = ({ category }: { category: string }) => (
+    <TouchableOpacity
+      style={[
+        styles.categoryChip,
+        selectedCategory === category && styles.categoryChipActive,
+      ]}
+      onPress={() => setSelectedCategory(category)}
+    >
+      <Text
         style={[
-          styles.categoryIcon,
-          { backgroundColor: category.color + "20" },
+          styles.categoryChipText,
+          selectedCategory === category && styles.categoryChipTextActive,
         ]}
       >
-        <Ionicons
-          name={category.icon as any}
-          size={32}
-          color={category.color}
-        />
-      </View>
-      <View style={styles.categoryContent}>
-        <Text style={styles.categoryTitle}>{category.title}</Text>
-        <Text style={styles.categorySubtitle}>{category.subtitle}</Text>
-        <Text style={styles.categoryExercises}>
-          {category.exercises} exercises
-        </Text>
-      </View>
-      <Ionicons name="chevron-forward" size={20} color={Colors.text.tertiary} />
+        {category}
+      </Text>
     </TouchableOpacity>
   );
 
-  const WorkoutCard = ({ workout }: any) => (
-    <TouchableOpacity style={styles.workoutCard} activeOpacity={0.8}>
-      <View style={styles.workoutHeader}>
-        <View>
-          <Text style={styles.workoutName}>{workout.name}</Text>
-          <Text style={styles.workoutCategory}>{workout.category}</Text>
-        </View>
-        <View style={styles.workoutRating}>
-          <Ionicons name="star" size={16} color="#FFD700" />
-          <Text style={styles.ratingText}>{workout.rating}</Text>
-        </View>
-      </View>
-      <View style={styles.workoutDetails}>
-        <View style={styles.workoutDetail}>
-          <Ionicons name="time" size={16} color={Colors.text.tertiary} />
-          <Text style={styles.detailText}>{workout.duration}</Text>
-        </View>
-        <View style={styles.workoutDetail}>
-          <Ionicons name="fitness" size={16} color={Colors.text.tertiary} />
-          <Text style={styles.detailText}>{workout.difficulty}</Text>
+  const WorkoutCard = ({ template }: { template: WorkoutTemplate }) => (
+    <TouchableOpacity
+      style={styles.workoutCard}
+      activeOpacity={0.8}
+      onPress={() =>
+        router.push({
+          pathname: "/workout-detail",
+          params: { id: template.id },
+        })
+      }
+    >
+      <Image
+        source={{ uri: template.media_url }}
+        style={styles.workoutImage}
+        contentFit="cover"
+      />
+      <View style={styles.workoutImageOverlay} />
+      <View style={styles.workoutContent}>
+        <Text style={styles.workoutName}>{template.name}</Text>
+        <View style={styles.workoutDetails}>
+          <View style={styles.workoutDetailChip}>
+            <Ionicons name="flash-outline" size={14} color="#FFF" />
+            <Text style={styles.workoutDetailText}>{template.difficulty}</Text>
+          </View>
+          <View style={styles.workoutDetailChip}>
+            <Ionicons name="time-outline" size={14} color="#FFF" />
+            <Text style={styles.workoutDetailText}>
+              {template.estimated_duration_minutes} min
+            </Text>
+          </View>
         </View>
       </View>
     </TouchableOpacity>
@@ -155,41 +128,50 @@ const WorkoutsScreen = () => {
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={Colors.primary.main}
+          />
+        }
       >
-        <Animated.View style={[styles.content, animatedStyle]}>
-          {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.title}>Workouts</Text>
-            <TouchableOpacity style={styles.searchButton}>
-              <Ionicons name="search" size={24} color={Colors.text.primary} />
-            </TouchableOpacity>
-          </View>
+        <View style={styles.header}>
+          <Text style={styles.title}>Discover Workouts</Text>
+          <TouchableOpacity style={styles.searchButton}>
+            <Ionicons name="search" size={24} color={Colors.text.primary} />
+          </TouchableOpacity>
+        </View>
 
-          {/* Categories */}
-          <View style={styles.categoriesContainer}>
-            <Text style={styles.sectionTitle}>Categories</Text>
-            <View style={styles.categoriesList}>
-              {workoutCategories.map((category) => (
-                <CategoryCard key={category.id} category={category} />
-              ))}
-            </View>
-          </View>
+        <View style={styles.categoriesContainer}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 24 }}
+          >
+            {workoutCategories.map((category) => (
+              <CategoryChip key={category} category={category} />
+            ))}
+          </ScrollView>
+        </View>
 
-          {/* Popular Workouts */}
-          <View style={styles.popularContainer}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Popular Workouts</Text>
-              <TouchableOpacity>
-                <Text style={styles.viewAllText}>View All</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.workoutsList}>
-              {popularWorkouts.map((workout) => (
-                <WorkoutCard key={workout.id} workout={workout} />
-              ))}
-            </View>
+        {loading && !refreshing ? (
+          <View style={styles.workoutsList}>
+            {[...Array(3)].map((_, index) => (
+              <WorkoutCardSkeleton key={index} delay={index * 150} />
+            ))}
           </View>
-        </Animated.View>
+        ) : templates.length > 0 ? (
+          <View style={styles.workoutsList}>
+            {templates.map((template) => (
+              <WorkoutCard key={template.id} template={template} />
+            ))}
+          </View>
+        ) : (
+          <View style={styles.emptyStateContainer}>
+            <Text style={styles.emptyStateText}>No workouts found.</Text>
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -198,148 +180,109 @@ const WorkoutsScreen = () => {
 export default WorkoutsScreen;
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background.primary,
-  },
-  scrollContent: {
-    paddingBottom: 40,
-  },
-  content: {
-    paddingHorizontal: 24,
-    paddingTop: 60,
-  },
+  container: { flex: 1, backgroundColor: Colors.background.primary },
+  scrollContent: { paddingBottom: 100 },
   header: {
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 10,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 32,
   },
   title: {
-    fontSize: 32,
-    fontWeight: "bold",
-    color: Colors.text.primary,
+    fontSize: 28,
     fontFamily: "BeVietnamPro-Bold",
+    color: Colors.text.primary,
   },
   searchButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
     backgroundColor: Colors.background.card,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: "center",
     alignItems: "center",
   },
   categoriesContainer: {
-    marginBottom: 32,
+    marginVertical: 10,
   },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: "600",
-    color: Colors.text.primary,
-    marginBottom: 16,
-    fontFamily: "BeVietnamPro-Bold",
-  },
-  categoriesList: {
-    gap: 12,
-  },
-  categoryCard: {
+  categoryChip: {
     backgroundColor: Colors.background.card,
-    borderRadius: 16,
-    padding: 20,
-    flexDirection: "row",
-    alignItems: "center",
+    borderRadius: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    marginRight: 10,
   },
-  categoryIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 16,
+  categoryChipActive: {
+    backgroundColor: Colors.primary.main,
   },
-  categoryContent: {
-    flex: 1,
-  },
-  categoryTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: Colors.text.primary,
-    marginBottom: 4,
-    fontFamily: "BeVietnamPro-Regular",
-  },
-  categorySubtitle: {
+  categoryChipText: {
+    fontFamily: "BeVietnamPro-Medium",
     fontSize: 14,
-    color: Colors.text.tertiary,
-    marginBottom: 4,
-    fontFamily: "BeVietnamPro-Regular",
+    color: Colors.text.secondary,
   },
-  categoryExercises: {
-    fontSize: 12,
-    color: Colors.text.tertiary,
-    fontFamily: "BeVietnamPro-Regular",
-  },
-  popularContainer: {
-    marginBottom: 32,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  viewAllText: {
-    fontSize: 14,
-    color: Colors.primary.main,
-    fontFamily: "BeVietnamPro-Regular",
+  categoryChipTextActive: {
+    color: "#FFF",
   },
   workoutsList: {
-    gap: 12,
+    paddingHorizontal: 24,
+    gap: 20,
+    marginTop: 10,
   },
   workoutCard: {
-    backgroundColor: Colors.background.card,
-    borderRadius: 16,
+    height: 180,
+    borderRadius: 20,
+    overflow: "hidden",
+    position: "relative",
+  },
+  workoutImage: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  workoutImageOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.4)",
+  },
+  workoutContent: {
+    flex: 1,
+    justifyContent: "flex-end",
     padding: 20,
   },
-  workoutHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 12,
-  },
   workoutName: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: Colors.text.primary,
-    marginBottom: 4,
-    fontFamily: "BeVietnamPro-Regular",
-  },
-  workoutCategory: {
-    fontSize: 14,
-    color: Colors.text.tertiary,
-    fontFamily: "BeVietnamPro-Regular",
-  },
-  workoutRating: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  ratingText: {
-    fontSize: 14,
-    color: Colors.text.primary,
-    fontFamily: "BeVietnamPro-Regular",
+    fontFamily: "BeVietnamPro-Bold",
+    fontSize: 22,
+    color: "#FFF",
+    marginBottom: 8,
   },
   workoutDetails: {
     flexDirection: "row",
-    gap: 16,
+    gap: 10,
   },
-  workoutDetail: {
+  workoutDetailChip: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    borderRadius: 14,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    gap: 6,
   },
-  detailText: {
-    fontSize: 14,
-    color: Colors.text.tertiary,
+  workoutDetailText: {
     fontFamily: "BeVietnamPro-Regular",
+    fontSize: 12,
+    color: "rgba(255,255,255,0.9)",
+  },
+  emptyStateContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 150,
+  },
+  emptyStateText: {
+    fontFamily: "BeVietnamPro-Medium",
+    fontSize: 16,
+    color: Colors.text.secondary,
+    textAlign: "center",
+    marginTop: 16,
+    lineHeight: 24,
   },
 });
