@@ -29,22 +29,31 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         if (session?.user) {
           console.log("✅ User found in initial session:", session.user.email);
-          dispatch(
-            setUser({
-              id: session.user.id,
-              email: session.user.email!,
-              name: session.user.user_metadata?.name,
-            })
-          );
 
           try {
+            // Fetch profile data
             const { data: profile } = await supabase
               .from("profiles")
-              .select("height, weight, age, gender")
+              .select("height, weight, age, gender, name")
               .eq("id", session.user.id)
               .single();
 
             if (!isMounted) return;
+
+            // Get name from profile or user metadata, with fallback to email prefix
+            const userName =
+              profile?.name ||
+              session.user.user_metadata?.name ||
+              session.user.email?.split("@")[0] ||
+              "User";
+
+            dispatch(
+              setUser({
+                id: session.user.id,
+                email: session.user.email!,
+                name: userName,
+              })
+            );
 
             if (
               profile &&
@@ -67,6 +76,18 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             }
           } catch (error) {
             console.error("❌ Error checking profile on initial load:", error);
+            // Still set user with fallback name
+            const userName =
+              session.user.user_metadata?.name ||
+              session.user.email?.split("@")[0] ||
+              "User";
+            dispatch(
+              setUser({
+                id: session.user.id,
+                email: session.user.email!,
+                name: userName,
+              })
+            );
           }
         }
       } catch (error) {
@@ -90,22 +111,30 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.log("🔄 Auth state change:", event, session?.user?.email);
 
       if (event === "SIGNED_IN" && session?.user) {
-        dispatch(
-          setUser({
-            id: session.user.id,
-            email: session.user.email!,
-            name: session.user.user_metadata?.name,
-          })
-        );
-
         try {
+          // Fetch profile data including name
           const { data: profile } = await supabase
             .from("profiles")
-            .select("height, weight, age, gender")
+            .select("height, weight, age, gender, name")
             .eq("id", session.user.id)
             .single();
 
           if (!isMounted) return;
+
+          // Get name from profile or user metadata, with fallback to email prefix
+          const userName =
+            profile?.name ||
+            session.user.user_metadata?.name ||
+            session.user.email?.split("@")[0] ||
+            "User";
+
+          dispatch(
+            setUser({
+              id: session.user.id,
+              email: session.user.email!,
+              name: userName,
+            })
+          );
 
           if (
             !profile ||
@@ -129,6 +158,18 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           }
         } catch (error) {
           console.error("Error checking profile on auth change:", error);
+          // Still set user with fallback name
+          const userName =
+            session.user.user_metadata?.name ||
+            session.user.email?.split("@")[0] ||
+            "User";
+          dispatch(
+            setUser({
+              id: session.user.id,
+              email: session.user.email!,
+              name: userName,
+            })
+          );
           if (isMounted) {
             router.replace("/auth/details");
           }
@@ -140,13 +181,45 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
       } else if (event === "TOKEN_REFRESHED" && session?.user) {
         // Handle token refresh
-        dispatch(
-          setUser({
-            id: session.user.id,
-            email: session.user.email!,
-            name: session.user.user_metadata?.name,
-          })
-        );
+        try {
+          // Fetch profile data including name
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("height, weight, age, gender, name")
+            .eq("id", session.user.id)
+            .single();
+
+          if (!isMounted) return;
+
+          // Get name from profile or user metadata, with fallback to email prefix
+          const userName =
+            profile?.name ||
+            session.user.user_metadata?.name ||
+            session.user.email?.split("@")[0] ||
+            "User";
+
+          dispatch(
+            setUser({
+              id: session.user.id,
+              email: session.user.email!,
+              name: userName,
+            })
+          );
+        } catch (error) {
+          console.error("Error fetching profile on token refresh:", error);
+          // Still set user with fallback name
+          const userName =
+            session.user.user_metadata?.name ||
+            session.user.email?.split("@")[0] ||
+            "User";
+          dispatch(
+            setUser({
+              id: session.user.id,
+              email: session.user.email!,
+              name: userName,
+            })
+          );
+        }
       }
     });
 

@@ -317,20 +317,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   categoryGroup: {
-    marginBottom: 20,
+    marginBottom: 30,
   },
   allCategoryGroup: {
     marginBottom: 0,
   },
   categoryTitle: {
     fontSize: 22,
+    marginBottom: 15,
     fontFamily: "BeVietnamPro-Bold",
     color: Colors.text.primary,
     textTransform: "capitalize",
   },
   workoutsList: {
     paddingHorizontal: 24,
-    gap: 20,
     marginTop: 10,
   },
   workoutCard: {
@@ -338,6 +338,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     overflow: "hidden",
     position: "relative",
+    marginBottom: 20,
   },
   workoutImage: {
     ...StyleSheet.absoluteFillObject,

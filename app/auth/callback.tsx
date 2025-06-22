@@ -48,25 +48,32 @@ const AuthCallback = () => {
         if (data.session) {
           console.log("✅ User authenticated:", data.session.user.email);
 
-          // User is authenticated, update Redux state
-          dispatch(
-            setUser({
-              id: data.session.user.id,
-              email: data.session.user.email!,
-              name: data.session.user.user_metadata?.name,
-            })
-          );
-
           // Check if profile is complete
           try {
             console.log("🔍 Checking user profile...");
             const { data: profile } = await supabase
               .from("profiles")
-              .select("height, weight, age, gender")
+              .select("height, weight, age, gender, name")
               .eq("id", data.session.user.id)
               .single();
 
             console.log("📊 Profile data:", profile);
+
+            // Get name from profile or user metadata, with fallback to email prefix
+            const userName =
+              profile?.name ||
+              data.session.user.user_metadata?.name ||
+              data.session.user.email?.split("@")[0] ||
+              "User";
+
+            // User is authenticated, update Redux state
+            dispatch(
+              setUser({
+                id: data.session.user.id,
+                email: data.session.user.email!,
+                name: userName,
+              })
+            );
 
             if (
               profile &&
@@ -97,6 +104,18 @@ const AuthCallback = () => {
             }
           } catch (profileError) {
             console.error("❌ Profile check error:", profileError);
+            // Still set user with fallback name
+            const userName =
+              data.session.user.user_metadata?.name ||
+              data.session.user.email?.split("@")[0] ||
+              "User";
+            dispatch(
+              setUser({
+                id: data.session.user.id,
+                email: data.session.user.email!,
+                name: userName,
+              })
+            );
             // Profile doesn't exist or error, go to profile completion
             setHasNavigated(true);
             router.replace("/auth/details");

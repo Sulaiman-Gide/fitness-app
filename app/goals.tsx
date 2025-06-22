@@ -6,10 +6,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { Stack, useRouter } from "expo-router";
-import LottieView from "lottie-react-native";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -18,7 +18,10 @@ import {
   View,
 } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import { useDispatch, useSelector } from "react-redux";
 
 const GoalsScreen = () => {
@@ -40,16 +43,25 @@ const GoalsScreen = () => {
   });
 
   useEffect(() => {
-    if (profile) {
-      setTargetWeight(profile.target_weight?.toString() || "");
-      setWeeklyWorkouts(profile.weekly_workouts?.toString() || "");
-      setDailyCalories(profile.daily_calorie_target?.toString() || "");
+    try {
+      if (profile) {
+        setTargetWeight(profile.target_weight?.toString() || "");
+        setWeeklyWorkouts(profile.weekly_workouts?.toString() || "");
+        setDailyCalories(profile.daily_calorie_target?.toString() || "");
+      }
+    } catch (error) {
+      console.error("Error setting profile data:", error);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [profile]);
 
   const showToast = (message: string, type: "success" | "error" | "info") => {
-    setToast({ visible: true, message, type });
+    try {
+      setToast({ visible: true, message, type });
+    } catch (error) {
+      console.error("Error showing toast:", error);
+    }
   };
 
   const handleSave = async () => {
@@ -59,47 +71,62 @@ const GoalsScreen = () => {
     }
 
     setSaving(true);
-    const updatedGoals = {
-      id: user.id,
-      target_weight: Number(targetWeight) || null,
-      weekly_workouts: Number(weeklyWorkouts) || null,
-      daily_calorie_target: Number(dailyCalories) || null,
-      updated_at: new Date().toISOString(),
-    };
 
-    const { data, error } = await supabase
-      .from("profiles")
-      .upsert(updatedGoals)
-      .select()
-      .single();
+    try {
+      const updatedGoals = {
+        id: user.id,
+        target_weight: Number(targetWeight) || null,
+        weekly_workouts: Number(weeklyWorkouts) || null,
+        daily_calorie_target: Number(dailyCalories) || null,
+        updated_at: new Date().toISOString(),
+      };
 
-    setSaving(false);
+      const { data, error } = await supabase
+        .from("profiles")
+        .upsert(updatedGoals)
+        .select()
+        .single();
 
-    if (error) {
-      showToast(error.message, "error");
-    } else if (data) {
-      dispatch(setProfile(data));
-      showToast("Goals saved successfully!", "success");
-      setTimeout(() => router.back(), 1500);
+      if (error) {
+        showToast(error.message, "error");
+      } else if (data) {
+        dispatch(setProfile(data));
+        showToast("Goals saved successfully!", "success");
+        setTimeout(() => router.back(), 1500);
+      }
+    } catch (error) {
+      console.error("Error saving goals:", error);
+      showToast("Failed to save goals. Please try again.", "error");
+    } finally {
+      setSaving(false);
     }
   };
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
+      <SafeAreaView style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={Colors.primary.main} />
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["top"]}>
       <Stack.Screen options={{ headerShown: false }} />
-      <Image
-        source={require("../assets/images/photo-5.jpg")}
-        style={styles.backgroundImage}
-        contentFit="cover"
-      />
+
+      {Platform.OS === "ios" ? (
+        <Image
+          source={require("../assets/images/photo-5.jpg")}
+          style={styles.backgroundImage}
+          contentFit="cover"
+        />
+      ) : (
+        <LinearGradient
+          colors={["#1a1a1a", "#2d2d2d", "#1a1a1a"]}
+          style={styles.backgroundImage}
+        />
+      )}
+
       <LinearGradient
         colors={["rgba(0,0,0,0.3)", "rgba(0,0,0,0.8)"]}
         style={styles.gradientOverlay}
@@ -120,6 +147,7 @@ const GoalsScreen = () => {
           paddingBottom: 120,
         }}
         showsVerticalScrollIndicator={false}
+        style={styles.scrollView}
       >
         <Animated.View
           style={styles.headerTextContainer}
@@ -166,12 +194,7 @@ const GoalsScreen = () => {
           disabled={saving}
         >
           {saving ? (
-            <LottieView
-              source={require("../assets/Lottie/appLoadingWhite.json")}
-              autoPlay
-              loop
-              style={{ width: 24, height: 24 }}
-            />
+            <ActivityIndicator size="small" color="#FFF" />
           ) : (
             <Text style={styles.saveButtonText}>Save Changes</Text>
           )}
@@ -183,7 +206,7 @@ const GoalsScreen = () => {
         type={toast.type}
         onHide={() => setToast({ ...toast, visible: false })}
       />
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -210,7 +233,10 @@ const GoalInput = ({ label, value, onChangeText, placeholder, icon }: any) => (
 );
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#000" },
+  container: {
+    flex: 1,
+    backgroundColor: "#000",
+  },
   backgroundImage: {
     ...StyleSheet.absoluteFillObject,
   },
@@ -223,34 +249,40 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: Colors.background.primary,
   },
+  scrollView: {
+    flex: 1,
+  },
   headerTextContainer: {
     alignItems: "center",
     paddingHorizontal: 24,
     marginBottom: 40,
   },
   sectionTitle: {
-    fontSize: 32,
-    fontFamily: "BeVietnamPro-Bold",
+    fontSize: Platform.OS === "ios" ? 32 : 28,
+    fontWeight: Platform.OS === "ios" ? undefined : "bold",
+    fontFamily: Platform.OS === "ios" ? "BeVietnamPro-Bold" : undefined,
     color: "#FFF",
     textAlign: "center",
     marginBottom: 8,
   },
   sectionSubtitle: {
     fontSize: 16,
-    fontFamily: "BeVietnamPro-Regular",
+    fontWeight: Platform.OS === "ios" ? undefined : "normal",
+    fontFamily: Platform.OS === "ios" ? "BeVietnamPro-Regular" : undefined,
     color: "rgba(255,255,255,0.8)",
     textAlign: "center",
   },
   formContainer: {
     paddingHorizontal: 24,
-    gap: 24,
   },
   inputContainer: {
     width: "100%",
+    marginBottom: 24,
   },
   label: {
     fontSize: 16,
-    fontFamily: "BeVietnamPro-Medium",
+    fontWeight: Platform.OS === "ios" ? undefined : "500",
+    fontFamily: Platform.OS === "ios" ? "BeVietnamPro-Medium" : undefined,
     color: "rgba(255,255,255,0.9)",
     marginBottom: 12,
   },
@@ -270,8 +302,10 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 16,
-    fontFamily: "BeVietnamPro-Regular",
+    fontWeight: Platform.OS === "ios" ? undefined : "normal",
+    fontFamily: Platform.OS === "ios" ? "BeVietnamPro-Regular" : undefined,
     color: "#FFF",
+    paddingVertical: Platform.OS === "android" ? 8 : 0,
   },
   footer: {
     position: "absolute",
@@ -295,7 +329,8 @@ const styles = StyleSheet.create({
   saveButtonText: {
     color: "#FFF",
     fontSize: 18,
-    fontFamily: "BeVietnamPro-Medium",
+    fontWeight: Platform.OS === "ios" ? undefined : "500",
+    fontFamily: Platform.OS === "ios" ? "BeVietnamPro-Medium" : undefined,
   },
   customHeader: {
     position: "absolute",

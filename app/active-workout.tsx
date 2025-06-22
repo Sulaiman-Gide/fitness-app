@@ -2,6 +2,7 @@ import { useToast } from "@/components/ToastProvider";
 import { supabase } from "@/config/supabase";
 import Colors from "@/constants/Colors";
 import { RootState } from "@/store";
+import { sendWorkoutCompleted } from "@/utils/notificationUtils";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
@@ -175,6 +176,28 @@ const ActiveWorkoutScreen = () => {
       });
 
       if (error) throw error;
+
+      // Send workout completion notification
+      try {
+        const userName = user.name || "Fitness Warrior";
+        const workoutName = workout?.name || "Workout";
+        const duration = Math.floor(time);
+        const calories = Math.floor((time / 60) * 5);
+
+        await sendWorkoutCompleted(
+          user.id,
+          userName,
+          workoutName,
+          duration,
+          calories
+        );
+      } catch (notificationError) {
+        console.error(
+          "Error sending workout completion notification:",
+          notificationError
+        );
+        // Don't fail the workout save if notification fails
+      }
 
       showToast({
         type: "success",

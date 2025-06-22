@@ -1,7 +1,7 @@
 import { useToast } from "@/components/ToastProvider";
 import { supabase } from "@/config/supabase";
 import Colors from "@/constants/Colors";
-import { setProfile as setReduxProfile } from "@/store/authSlice";
+import { setProfile as setReduxProfile, setUser } from "@/store/authSlice";
 import { Stack, useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -24,7 +24,7 @@ const EditProfileScreen = () => {
   const user = useSelector((state: any) => state.auth.user);
   const profile = useSelector((state: any) => state.auth.profile);
 
-  const [name, setName] = useState(user?.user_metadata?.name || "");
+  const [name, setName] = useState(user?.name || "");
   const [height, setHeight] = useState(profile?.height?.toString() || "");
   const [weight, setWeight] = useState(profile?.weight?.toString() || "");
   const [age, setAge] = useState(profile?.age?.toString() || "");
@@ -44,10 +44,22 @@ const EditProfileScreen = () => {
       });
       if (userError) throw userError;
 
+      // Update Redux user state with new name
+      if (updatedUser) {
+        dispatch(
+          setUser({
+            id: updatedUser.id,
+            email: updatedUser.email!,
+            name: name,
+          })
+        );
+      }
+
       // Update profile
       const { data: updatedProfile, error: profileError } = await supabase
         .from("profiles")
         .update({
+          name: name,
           height: parseInt(height, 10),
           weight: parseInt(weight, 10),
           age: parseInt(age, 10),

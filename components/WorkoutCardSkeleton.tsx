@@ -74,6 +74,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background.card,
     overflow: "hidden",
     position: "relative",
+    marginBottom: 20,
   },
   workoutContent: {
     flex: 1,

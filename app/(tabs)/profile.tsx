@@ -1,9 +1,5 @@
 import { supabase } from "@/config/supabase";
 import Colors from "@/constants/Colors";
-import {
-  sendLocalNotification,
-  sendNotificationViaSupabase,
-} from "@/hooks/usePushNotifications";
 import { logout } from "@/store/authSlice";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -61,6 +57,8 @@ const ProfileScreen = () => {
     </View>
   );
 
+  console.log(user);
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView
@@ -72,7 +70,9 @@ const ProfileScreen = () => {
             <View style={styles.avatar}>
               <Ionicons name="person" size={40} color={Colors.text.primary} />
             </View>
-            <Text style={styles.userName}>{user?.name || "User"}</Text>
+            <Text style={styles.userName}>
+              {user?.name || user?.email?.split("@")[0] || "User"}
+            </Text>
             <Text style={styles.userEmail}>{user?.email}</Text>
           </View>
 
@@ -95,6 +95,23 @@ const ProfileScreen = () => {
 
           <View style={styles.actionsSection}>
             <Text style={styles.sectionTitle}>Actions</Text>
+
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => router.push("/edit-profile")}
+            >
+              <Ionicons
+                name="person-outline"
+                size={20}
+                color={Colors.text.primary}
+              />
+              <Text style={styles.actionButtonText}>Edit Profile</Text>
+              <Ionicons
+                name="chevron-forward"
+                size={20}
+                color={Colors.text.tertiary}
+              />
+            </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.actionButton}
@@ -157,108 +174,6 @@ const ProfileScreen = () => {
                 color={Colors.text.primary}
               />
               <Text style={styles.actionButtonText}>Terms of Service</Text>
-              <Ionicons
-                name="chevron-forward"
-                size={20}
-                color={Colors.text.tertiary}
-              />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={async () => {
-                try {
-                  // Send a local notification (this will definitely work!)
-                  await sendLocalNotification(
-                    "Test Notification 🧪",
-                    "This is a working notification from your fitness app!",
-                    { type: "test" }
-                  );
-                  Alert.alert("Success", "Local notification sent!");
-                } catch (error) {
-                  console.error("Test notification error:", error);
-                  Alert.alert("Error", "Failed to send test notification");
-                }
-              }}
-            >
-              <Ionicons
-                name="notifications-outline"
-                size={20}
-                color={Colors.text.primary}
-              />
-              <Text style={styles.actionButtonText}>
-                Test Local Notification
-              </Text>
-              <Ionicons
-                name="chevron-forward"
-                size={20}
-                color={Colors.text.tertiary}
-              />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={async () => {
-                try {
-                  // Test Supabase notification
-                  await sendNotificationViaSupabase(
-                    user.id,
-                    "Supabase Test 🚀",
-                    "This notification came from your Supabase backend!",
-                    { type: "supabase_test" }
-                  );
-                  Alert.alert("Success", "Supabase notification sent!");
-                } catch (error) {
-                  console.error("Supabase notification error:", error);
-                  Alert.alert("Error", "Failed to send Supabase notification");
-                }
-              }}
-            >
-              <Ionicons
-                name="cloud-outline"
-                size={20}
-                color={Colors.text.primary}
-              />
-              <Text style={styles.actionButtonText}>
-                Test Supabase Notification
-              </Text>
-              <Ionicons
-                name="chevron-forward"
-                size={20}
-                color={Colors.text.tertiary}
-              />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={async () => {
-                try {
-                  // Clear the old push token to force regeneration
-                  const { error } = await supabase
-                    .from("profiles")
-                    .update({ push_token: null })
-                    .eq("id", user.id);
-
-                  if (error) throw error;
-
-                  // Refresh the profile to trigger token regeneration
-                  dispatch(logout());
-                  Alert.alert(
-                    "Success",
-                    "Push token cleared. Please restart the app to generate a new real token."
-                  );
-                } catch (error) {
-                  console.error("Error clearing push token:", error);
-                  Alert.alert("Error", "Failed to clear push token");
-                }
-              }}
-            >
-              <Ionicons
-                name="refresh-outline"
-                size={20}
-                color={Colors.text.primary}
-              />
-              <Text style={styles.actionButtonText}>Reset Push Token</Text>
               <Ionicons
                 name="chevron-forward"
                 size={20}

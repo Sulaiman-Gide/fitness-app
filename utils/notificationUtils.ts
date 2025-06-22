@@ -121,4 +121,24 @@ export const sendGoalCompleted = async (userId: string, goalName: string) => {
       screen: 'goals',
     },
   });
+};
+
+/**
+ * Send a workout completion notification
+ */
+export const sendWorkoutCompleted = async (userId: string, userName: string, workoutName: string, duration: number, calories: number) => {
+  const durationMinutes = Math.round(duration / 60);
+  const workoutDisplayName = workoutName || 'Workout';
+  
+  return sendNotificationToUser(userId, {
+    title: `🎉 Great job, ${userName}!`,
+    body: `You completed your ${workoutDisplayName} in ${durationMinutes} minutes and burned ${calories} calories!`,
+    data: {
+      type: 'workout_completed',
+      workout_name: workoutDisplayName,
+      duration_minutes: durationMinutes,
+      calories_burned: calories,
+      screen: 'progress',
+    },
+  });
 }; 
