@@ -8,6 +8,13 @@
     "scheme": "fittrackpro",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
+    "owner": "dev_gide",
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "526ea655-2447-4f32-a23c-969d540195fa"
+      }
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.fitnessapp.mobile"
@@ -27,13 +34,12 @@
               "scheme": "fittrackpro"
             }
           ],
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ]
+          "category": ["BROWSABLE", "DEFAULT"]
         }
       ],
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "googleServicesFile": "./google-services.json",
+      "useNextNotificationsApi": true
     },
     "web": {
       "bundler": "metro",
@@ -46,10 +52,17 @@
         "expo-splash-screen",
         {
           "resizeMode": "contain",
-          "backgroundColor": "#000000"
+          "backgroundColor": "#000000",
+          "image": "./assets/images/icon.png"
         }
       ],
-      "expo-notifications"
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#000000"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

@@ -1,6 +1,6 @@
 import { supabase } from "@/config/supabase";
 import { setProfile } from "@/store/authSlice";
-import Constants from "expo-constants";
+import Constants from 'expo-constants';
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import { useEffect, useRef } from "react";
@@ -10,7 +10,7 @@ import { useDispatch, useSelector } from "react-redux";
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
-    shouldPlaySound: false,
+    shouldPlaySound: true,
     shouldSetBadge: false,
     shouldShowBanner: true,
     shouldShowList: true,
@@ -45,9 +45,9 @@ async function registerForPushNotificationsAsync(): Promise<
     return;
   }
 
+  // Get the real Expo project ID
   const projectId =
-    Constants?.expoConfig?.extra?.eas?.projectId ??
-    Constants?.easConfig?.projectId;
+        Constants?.expoConfig?.extra?.eas?.projectId ?? Constants?.easConfig?.projectId;
 
   if (!projectId) {
     Alert.alert("Project ID not found");
@@ -55,12 +55,17 @@ async function registerForPushNotificationsAsync(): Promise<
   }
 
   try {
+    // Get real Expo push token
     const pushTokenString = (
-      await Notifications.getExpoPushTokenAsync({ projectId })
+      await Notifications.getExpoPushTokenAsync({ 
+        projectId: projectId
+      })
     ).data;
+    
+    console.log("Real Expo push token generated:", pushTokenString);
     return pushTokenString;
   } catch (e) {
-    console.error(e);
+    console.log("Error getting real push token:", e);
     Alert.alert("Failed to get push token");
   }
 }
@@ -116,30 +121,51 @@ export const usePushNotifications = () => {
 
       if (error) throw error;
       dispatch(setProfile(data));
-      console.log("Push token saved successfully");
+      console.log("Real push token saved successfully");
     } catch (error) {
       console.error("Error saving push token:", error);
     }
   };
 };
 
-// Can use this function below or use Expo's Push Notification Tool from a server
-async function sendPushNotification(expoPushToken: string) {
-  const message = {
-    to: expoPushToken,
-    sound: "default",
-    title: "Original Title",
-    body: "And here is the body!",
-    data: { someData: "goes here" },
-  };
+// Working notification function using local notifications
+export async function sendLocalNotification(title: string, body: string, data?: any) {
+  try {
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: title,
+        body: body,
+        data: data || {},
+        sound: true,
+      },
+      trigger: null, // Send immediately
+    });
+    
+    console.log("Local notification sent successfully");
+    return { success: true };
+  } catch (error) {
+    console.error("Error sending local notification:", error);
+    throw error;
+  }
+}
 
-  await fetch("https://exp.host/--/api/v2/push/send", {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Accept-encoding": "gzip, deflate",
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(message),
-  });
+// Function to send notification via our Supabase backend
+export async function sendNotificationViaSupabase(userId: string, title: string, body: string, data?: any) {
+  try {
+    const { data: result, error } = await supabase.functions.invoke('send-notification', {
+      body: {
+        user_id: userId,
+        title: title,
+        body: body,
+        data: data || {},
+      },
+    });
+
+    if (error) throw error;
+    console.log("Supabase notification result:", result);
+    return result;
+  } catch (error) {
+    console.error("Error sending Supabase notification:", error);
+    throw error;
+  }
 }

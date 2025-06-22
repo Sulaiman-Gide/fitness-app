@@ -8,7 +8,8 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "rebuild-android": "cd android && ./gradlew clean && cd .. && npx expo run:android --device"
   },
   "dependencies": {
     "@expo/vector-icons": "^14.1.0",
@@ -22,6 +23,7 @@
     "expo": "~53.0.12",
     "expo-blur": "~14.1.5",
     "expo-constants": "~17.1.6",
+    "expo-dev-client": "^5.2.1",
     "expo-device": "~7.1.4",
     "expo-font": "~13.3.1",
     "expo-haptics": "~14.1.4",
@@ -44,6 +46,7 @@
     "react-native-gesture-handler": "~2.24.0",
     "react-native-get-random-values": "^1.11.0",
     "react-native-linear-gradient": "2.8.3",
+    "react-native-onesignal": "^5.2.12",
     "react-native-reanimated": "~3.17.4",
     "react-native-safe-area-context": "5.4.0",
     "react-native-screens": "~4.11.1",
