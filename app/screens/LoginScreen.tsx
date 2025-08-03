@@ -7,6 +7,7 @@ import { useRouter } from "expo-router";
 import LottieView from "lottie-react-native";
 import React, { useCallback, useState } from "react";
 import {
+  BackHandler,
   Dimensions,
   KeyboardAvoidingView,
   Platform,
@@ -91,11 +92,13 @@ const LoginScreen = () => {
 
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: formData.email,
+        email: formData.email.trim(),
         password: formData.password,
       });
 
       if (error) {
+        // Reset loading state before showing error
+        setLoading(false);
         let errorMessage = "An error occurred during login";
         if (error.message.includes("Invalid login credentials")) {
           errorMessage = "Invalid email or password";
@@ -114,10 +117,14 @@ const LoginScreen = () => {
           login({
             id: data.user.id,
             email: data.user.email!,
-            name: data.user.user_metadata?.name,
+            name:
+              data.user.user_metadata?.name ||
+              data.user.email?.split("@")[0] ||
+              "User",
           })
         );
-        // AuthProvider will handle navigation
+        // Use replace to prevent going back to login
+        router.replace("/(tabs)");
       }
     } catch (error: any) {
       console.error("Login error:", error);
@@ -189,6 +196,23 @@ const LoginScreen = () => {
     ),
     []
   );
+
+  // Prevent going back to previous screen if already authenticated
+  React.useEffect(() => {
+    if (Platform.OS === "android") {
+      const backAction = () => {
+        // Prevent going back to previous screen
+        return true;
+      };
+
+      const backHandler = BackHandler.addEventListener(
+        "hardwareBackPress",
+        backAction
+      );
+
+      return () => backHandler.remove();
+    }
+  }, []);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -338,9 +362,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: Colors.background.card,
     borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E1E5E9",
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
   },
   inputIcon: {
     marginRight: 12,

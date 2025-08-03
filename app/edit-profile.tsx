@@ -56,22 +56,35 @@ const EditProfileScreen = () => {
       }
 
       // Update profile
+      const updatedProfileData = {
+        name: name,
+        height: parseInt(height, 10),
+        weight: parseInt(weight, 10),
+        age: parseInt(age, 10),
+        updated_at: new Date().toISOString(),
+      };
+
       const { data: updatedProfile, error: profileError } = await supabase
         .from("profiles")
-        .update({
-          name: name,
-          height: parseInt(height, 10),
-          weight: parseInt(weight, 10),
-          age: parseInt(age, 10),
-        })
+        .update(updatedProfileData)
         .eq("id", user.id)
         .select()
         .single();
       if (profileError) throw profileError;
 
-      dispatch(setReduxProfile(updatedProfile));
+      // Update Redux store with the complete profile data
+      dispatch(
+        setReduxProfile({
+          ...profile,
+          ...updatedProfileData,
+        })
+      );
+
       showToast({ type: "success", message: "Profile updated successfully" });
-      router.back();
+
+      setTimeout(() => {
+        router.back();
+      }, 100);
     } catch (error: any) {
       console.error("Error updating profile:", error);
       showToast({ type: "error", message: error.message });
@@ -134,7 +147,7 @@ const EditProfileScreen = () => {
           disabled={saving}
         >
           {saving ? (
-            <Text>Saving...</Text>
+            <Text style={styles.saveButtonText}>Saving...</Text>
           ) : (
             <Text style={styles.saveButtonText}>Save Changes</Text>
           )}

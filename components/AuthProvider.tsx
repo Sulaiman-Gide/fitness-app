@@ -1,17 +1,64 @@
 import { supabase } from "@/config/supabase";
 import { RootState } from "@/store";
 import { setInitialized, setProfile, setUser } from "@/store/authSlice";
-import { useRouter } from "expo-router";
+import { useRouter, useSegments } from "expo-router";
 import React, { useEffect } from "react";
+import { BackHandler, Platform } from "react-native";
 import { useDispatch, useSelector } from "react-redux";
 
 const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const dispatch = useDispatch();
   const router = useRouter();
+  const segments = useSegments();
   const { isAuthenticated, initialized, profileComplete } = useSelector(
     (state: RootState) => state.auth
   );
+  
+  // Track if we've already handled the initial navigation
+  const navigationHandled = React.useRef(false);
 
+  // Handle back button on Android
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    
+    const backAction = () => {
+      // Prevent going back to auth screens after login
+      if (isAuthenticated && (segments[0] === 'login' || segments[0] === 'signup')) {
+        return true; // Block default back action
+      }
+      return false; // Default back action
+    };
+
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+    return () => backHandler.remove();
+  }, [isAuthenticated, segments]);
+
+  // Handle navigation based on auth state
+  useEffect(() => {
+    if (!initialized) return;
+    
+    const inAuthGroup = segments[0] === 'login' || segments[0] === 'signup' || segments[0] === 'forgot-password';
+    
+    // Only handle navigation once per auth state change
+    if (navigationHandled.current) return;
+    
+    if (isAuthenticated && inAuthGroup) {
+      // User is signed in but on an auth screen, redirect to home
+      navigationHandled.current = true;
+      router.replace('/(tabs)');
+    } else if (!isAuthenticated && !inAuthGroup) {
+      // User is not signed in and not on an auth screen, redirect to login
+      navigationHandled.current = true;
+      router.replace('/login');
+    }
+  }, [isAuthenticated, initialized, segments, router]);
+
+  // Reset navigation handled flag when auth state changes
+  useEffect(() => {
+    navigationHandled.current = false;
+  }, [isAuthenticated]);
+
+  // Check initial session
   useEffect(() => {
     let isMounted = true;
 

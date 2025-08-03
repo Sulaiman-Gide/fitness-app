@@ -1,12 +1,12 @@
 import CustomToast from "@/components/CustomToast";
 import { supabase } from "@/config/supabase";
 import Colors from "@/constants/Colors";
-import { login } from "@/store/authSlice";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import LottieView from "lottie-react-native";
 import React, { useCallback, useState } from "react";
 import {
+  BackHandler,
   Dimensions,
   KeyboardAvoidingView,
   Platform,
@@ -99,6 +99,27 @@ const SignupScreen = () => {
     return true;
   };
 
+  // Handle back button press
+  React.useEffect(() => {
+    if (Platform.OS === "android") {
+      const backAction = () => {
+        // Navigate to login screen when back is pressed
+        router.push({
+          pathname: "/login",
+          params: { email: formData.email.trim() },
+        });
+        return true; // Prevent default back behavior
+      };
+
+      const backHandler = BackHandler.addEventListener(
+        "hardwareBackPress",
+        backAction
+      );
+
+      return () => backHandler.remove();
+    }
+  }, [formData.email, router]);
+
   const handleSignup = async () => {
     if (!validateForm()) return;
 
@@ -135,32 +156,11 @@ const SignupScreen = () => {
           "success"
         );
 
-        // Auto-login after successful signup
-        setTimeout(async () => {
-          try {
-            const { data: loginData, error: loginError } =
-              await supabase.auth.signInWithPassword({
-                email: formData.email,
-                password: formData.password,
-              });
-
-            if (loginError) {
-              showToast("Please verify your email before logging in", "info");
-              router.push("/login" as any);
-            } else if (loginData.user) {
-              dispatch(
-                login({
-                  id: loginData.user.id,
-                  email: loginData.user.email!,
-                  name: loginData.user.user_metadata?.name,
-                })
-              );
-              // AuthProvider will handle navigation
-            }
-          } catch (error) {
-            showToast("Please verify your email before logging in", "info");
-            router.push("/login" as any);
-          }
+        setTimeout(() => {
+          router.replace({
+            pathname: "/login",
+            params: { email: formData.email },
+          } as any);
         }, 2000);
       }
     } catch (error: any) {
@@ -382,6 +382,8 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   inputContainer: {
+    borderWidth: 0,
+    outline: "none",
     marginBottom: 24,
   },
   inputLabel: {
@@ -396,9 +398,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: Colors.background.card,
     borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E1E5E9",
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
   },
   inputIcon: {
     marginRight: 12,

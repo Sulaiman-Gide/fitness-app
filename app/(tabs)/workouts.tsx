@@ -15,6 +15,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useSelector } from "react-redux";
 
 interface WorkoutTemplate {
   id: number;
@@ -51,6 +52,31 @@ const WorkoutsScreen = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchActive, setIsSearchActive] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("All");
+  const userWeight = useSelector((state: any) => state.auth.profile?.weight);
+
+  const getAdjustedDuration = (baseDuration: number, weight?: number) => {
+    if (!weight || isNaN(weight)) return baseDuration;
+
+    if (weight < 50) {
+      // Less than 50kg: 40% of the time (minimum 12 minutes)
+      return Math.max(Math.round(baseDuration * 0.4), 12);
+    } else if (weight >= 50 && weight <= 59) {
+      // 50-59kg: 60% of the time (minimum 18 minutes)
+      return Math.max(Math.round(baseDuration * 0.6), 18);
+    } else if (weight >= 60 && weight <= 74) {
+      // 60-74kg: 80% of the time (minimum 24 minutes)
+      return Math.max(Math.round(baseDuration * 0.8), 24);
+    } else if (weight >= 75 && weight <= 89) {
+      // 75-89kg: Standard duration
+      return baseDuration;
+    } else if (weight >= 90 && weight <= 99) {
+      // 90-99kg: 25% more time
+      return Math.round(baseDuration * 1.25);
+    } else {
+      // 100kg+: 50% more time
+      return Math.round(baseDuration * 1.5);
+    }
+  };
 
   const fetchWorkoutTemplates = async () => {
     try {
@@ -161,7 +187,14 @@ const WorkoutsScreen = () => {
           <View style={styles.workoutDetailChip}>
             <Ionicons name="time-outline" size={14} color="#FFF" />
             <Text style={styles.workoutDetailText}>
-              {template.estimated_duration_minutes} min
+              {getAdjustedDuration(
+                template.estimated_duration_minutes,
+                userWeight ? parseFloat(userWeight) : undefined
+              )}{" "}
+              min
+              {userWeight && parseFloat(userWeight) >= 80 && (
+                <Text style={styles.adjustedText}>*</Text>
+              )}
             </Text>
           </View>
         </View>
@@ -389,5 +422,11 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 16,
     lineHeight: 24,
+  },
+  adjustedText: {
+    color: Colors.primary.main,
+    fontSize: 12,
+    position: "relative",
+    top: -4,
   },
 });

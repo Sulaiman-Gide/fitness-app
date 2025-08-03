@@ -8,7 +8,6 @@ import { useRouter } from "expo-router";
 import LottieView from "lottie-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
-  Dimensions,
   StyleSheet,
   Text,
   TextInput,
@@ -23,8 +22,6 @@ import Animated, {
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useDispatch, useSelector } from "react-redux";
-
-const { width, height } = Dimensions.get("window");
 
 const DetailsScreen = () => {
   const [currentStep, setCurrentStep] = useState(0);
@@ -266,7 +263,7 @@ const DetailsScreen = () => {
       <View style={styles.form}>
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Height (cm)</Text>
-          <View style={styles.inputWrapper} pointerEvents="box-none">
+          <View style={styles.inputWrapper}>
             <Ionicons
               name="resize"
               size={20}
@@ -294,7 +291,7 @@ const DetailsScreen = () => {
 
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Weight (kg)</Text>
-          <View style={styles.inputWrapper} pointerEvents="box-none">
+          <View style={styles.inputWrapper}>
             <Ionicons
               name="scale"
               size={20}
@@ -322,7 +319,7 @@ const DetailsScreen = () => {
 
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Age</Text>
-          <View style={styles.inputWrapper} pointerEvents="box-none">
+          <View style={styles.inputWrapper}>
             <Ionicons
               name="calendar"
               size={20}
@@ -594,7 +591,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border.light,
     paddingHorizontal: 16,
-    paddingVertical: 4,
+    height: 56,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -606,10 +603,12 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    height: 50,
+    height: '100%',
     fontSize: 16,
     color: Colors.text.primary,
     fontFamily: "BeVietnamPro-Regular",
+    paddingVertical: 0,
+    margin: 0,
   },
   genderContainer: {
     flexDirection: "row",
