@@ -41,6 +41,9 @@ type WorkoutTemplate = {
 const ActiveWorkoutScreen = () => {
   const { id } = useLocalSearchParams<{ id: string }>();
   const user = useSelector((state: RootState) => state.auth.user);
+  const userWeight = useSelector(
+    (state: RootState) => state.auth.profile?.weight
+  );
   const { showToast } = useToast();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -90,8 +93,28 @@ const ActiveWorkoutScreen = () => {
           setTime((prevTime) => prevTime + 1);
         }, 1000);
       } else {
-        // For template workouts, animate based on duration
-        const totalDuration = workout.estimated_duration_minutes * 60;
+        const getAdjustedDuration = (baseDuration: number, weight?: number) => {
+          if (!weight || isNaN(weight)) return baseDuration * 60;
+
+          if (weight < 50) {
+            return Math.max(Math.round(baseDuration * 0.4 * 60), 12 * 60);
+          } else if (weight >= 50 && weight <= 59) {
+            return Math.max(Math.round(baseDuration * 0.6 * 60), 18 * 60);
+          } else if (weight >= 60 && weight <= 74) {
+            return Math.max(Math.round(baseDuration * 0.8 * 60), 24 * 60);
+          } else if (weight >= 75 && weight <= 89) {
+            return baseDuration * 60;
+          } else if (weight >= 90 && weight <= 99) {
+            return Math.round(baseDuration * 1.25 * 60);
+          } else {
+            return Math.round(baseDuration * 1.5 * 60);
+          }
+        };
+
+        const totalDuration = getAdjustedDuration(
+          workout.estimated_duration_minutes,
+          userWeight
+        );
         animatedProgress.addListener((animation) => {
           const newTime = (animation.value / CIRCLE_LENGTH) * totalDuration;
           setTime(newTime);
@@ -167,13 +190,21 @@ const ActiveWorkoutScreen = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
     try {
-      const { error } = await supabase.from("workout_history").insert({
+      const weight = userWeight || 70;
+      const durationSeconds = Math.floor(time);
+      const caloriesBurned = Math.round(5 * weight * (durationSeconds / 3600));
+
+      const workoutData = {
         user_id: user.id,
-        workout_template_id: workout?.id || null, // Can be null for empty workouts
-        duration_seconds: Math.floor(time),
-        // A simple estimate for calories burned: 5 calories per minute
-        calories_burned: Math.floor((time / 60) * 5),
-      });
+        workout_template_id: workout?.id ? String(workout.id) : null,
+        duration_seconds: durationSeconds,
+        calories_burned: caloriesBurned,
+        completed_at: new Date().toISOString(),
+      };
+
+      const { error } = await supabase
+        .from("workout_history")
+        .insert(workoutData);
 
       if (error) throw error;
 
@@ -181,15 +212,13 @@ const ActiveWorkoutScreen = () => {
       try {
         const userName = user.name || "Fitness Warrior";
         const workoutName = workout?.name || "Workout";
-        const duration = Math.floor(time);
-        const calories = Math.floor((time / 60) * 5);
 
         await sendWorkoutCompleted(
           user.id,
           userName,
           workoutName,
-          duration,
-          calories
+          durationSeconds,
+          caloriesBurned
         );
       } catch (notificationError) {
         console.error(

@@ -20,7 +20,7 @@ const AuthCallback = () => {
     const handleAuthCallback = async () => {
       // Prevent multiple navigation attempts
       if (hasNavigated) {
-        console.log("🚫 Navigation already attempted, skipping...");
+        console.log("Navigation already attempted, skipping...");
         return;
       }
 
@@ -46,11 +46,11 @@ const AuthCallback = () => {
         );
 
         if (data.session) {
-          console.log("✅ User authenticated:", data.session.user.email);
+          console.log("User authenticated:", data.session.user.email);
 
           // Check if profile is complete
           try {
-            console.log("🔍 Checking user profile...");
+            console.log("Checking user profile...");
             const { data: profile } = await supabase
               .from("profiles")
               .select("height, weight, age, gender, name")
@@ -82,7 +82,7 @@ const AuthCallback = () => {
               profile.age &&
               profile.gender
             ) {
-              console.log("✅ Profile complete - routing to main app");
+              console.log("Profile complete - routing to main app");
               // Profile is complete, go to main app
               dispatch(
                 setProfile({
@@ -103,7 +103,7 @@ const AuthCallback = () => {
               router.replace("/auth/details");
             }
           } catch (profileError) {
-            console.error("❌ Profile check error:", profileError);
+            console.error("Profile check error:", profileError);
             // Still set user with fallback name
             const userName =
               data.session.user.user_metadata?.name ||
@@ -124,9 +124,7 @@ const AuthCallback = () => {
           // No session found, but this might be a verification link
           // Let's retry a few times to give Supabase time to process
           if (retryCount < 3) {
-            console.log(
-              `⏳ No session found, retrying... (${retryCount + 1}/3)`
-            );
+            console.log(`No session found, retrying... (${retryCount + 1}/3)`);
             setRetryCount((prev) => prev + 1);
 
             // Clear any existing timeout
@@ -137,16 +135,16 @@ const AuthCallback = () => {
             // Set new timeout
             timeoutRef.current = setTimeout(() => {
               handleAuthCallback();
-            }, 2000); // Wait 2 seconds before retry
+            }, 2000);
             return;
           }
 
-          console.log("❌ No session found after retries - routing to login");
+          console.log("No session found after retries - routing to login");
           setHasNavigated(true);
           router.replace("/login");
         }
       } catch (error) {
-        console.error("❌ Auth callback error:", error);
+        console.error("Auth callback error:", error);
         setHasNavigated(true);
         router.replace("/login");
       } finally {

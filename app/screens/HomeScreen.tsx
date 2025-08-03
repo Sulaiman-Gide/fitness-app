@@ -1,52 +1,52 @@
 import Colors from "@/constants/Colors";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
-import {
-  Dimensions,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-  withTiming,
-} from "react-native-reanimated";
+import { Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
+import { supabase } from "@/config/supabase";
+import { useEffect, useState } from "react";
+import { useAppSelector } from "@/store/hooks";
+import { RootState } from "@/store";
 
 const { width } = Dimensions.get("window");
 
-const workoutCards = [
-  {
-    id: "1",
-    title: "Full Body Workout",
-    duration: "45 min",
-    difficulty: "Intermediate",
-    calories: "320",
-    icon: "fitness",
-    gradient: Colors.primary.gradient,
-  },
-  {
-    id: "2",
-    title: "Cardio Blast",
-    duration: "30 min",
-    difficulty: "Beginner",
-    calories: "280",
-    icon: "heart",
-    gradient: Colors.secondary.gradient,
-  },
-  {
-    id: "3",
-    title: "Strength Training",
-    duration: "60 min",
-    difficulty: "Advanced",
-    calories: "450",
-    icon: "barbell",
-    gradient: Colors.accent.gradient,
-  },
-];
+interface WorkoutTemplate {
+  id: number;
+  name: string;
+  category: string;
+  difficulty: string;
+  estimated_duration_minutes: number;
+  media_url: string | null;
+  calories_burned?: number;
+}
+
+const getWorkoutIcon = (category: string) => {
+  switch (category.toLowerCase()) {
+    case 'strength':
+      return 'barbell';
+    case 'cardio':
+      return 'heart';
+    case 'hiit':
+      return 'flash';
+    case 'yoga':
+      return 'body';
+    default:
+      return 'fitness';
+  }
+};
+
+const getDifficultyColor = (difficulty: string) => {
+  switch (difficulty.toLowerCase()) {
+    case 'beginner':
+      return '#10B981'; // Green
+    case 'intermediate':
+      return '#F59E0B'; // Amber
+    case 'advanced':
+      return '#EF4444'; // Red
+    default:
+      return Colors.text.secondary;
+  }
+};
 
 const stats = [
   { label: "Workouts", value: "12", icon: "fitness" },
@@ -58,18 +58,51 @@ const stats = [
 export default function HomeScreen() {
   const fadeAnim = useSharedValue(0);
   const slideAnim = useSharedValue(50);
+  const [workoutTemplates, setWorkoutTemplates] = useState<WorkoutTemplate[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { user, profile } = useAppSelector((state: RootState) => ({
+    user: state.auth.user,
+    profile: state.auth.profile
+  }));
 
-  React.useEffect(() => {
+  useEffect(() => {
     fadeAnim.value = withTiming(1, { duration: 1000 });
     slideAnim.value = withSpring(0, { damping: 15, stiffness: 100 });
+    fetchRecommendedWorkouts();
   }, []);
+
+  const fetchRecommendedWorkouts = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("workout_templates")
+        .select("*")
+        .order('created_at', { ascending: false })
+        .limit(3);
+
+      if (error) throw error;
+      
+      // Add estimated calories based on duration (5 MET * weight * time in hours)
+      const weight = profile?.weight || 70; // Default to 70kg if no profile weight
+      const workoutsWithCalories = data.map(workout => ({
+        ...workout,
+        calories_burned: Math.round(5 * weight * (workout.estimated_duration_minutes / 60))
+      }));
+      
+      setWorkoutTemplates(workoutsWithCalories);
+    } catch (error) {
+      console.error("Error fetching recommended workouts:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const animatedStyle = useAnimatedStyle(() => ({
     opacity: fadeAnim.value,
     transform: [{ translateY: slideAnim.value }],
   }));
 
-  const WorkoutCard = ({ workout }: any) => (
+  const WorkoutCard = ({ workout }: { workout: WorkoutTemplate }) => (
     <TouchableOpacity style={styles.workoutCard} activeOpacity={0.8}>
       <View
         style={[
@@ -79,19 +112,21 @@ export default function HomeScreen() {
       >
         <View style={styles.workoutHeader}>
           <Ionicons
-            name={workout.icon as any}
+            name={getWorkoutIcon(workout.category) as any}
             size={32}
             color={Colors.text.primary}
           />
           <View style={styles.workoutInfo}>
-            <Text style={styles.workoutTitle}>{workout.title}</Text>
-            <Text style={styles.workoutDuration}>{workout.duration}</Text>
+            <Text style={styles.workoutTitle}>{workout.name}</Text>
+            <Text style={styles.workoutDuration}>{workout.estimated_duration_minutes} min</Text>
           </View>
         </View>
         <View style={styles.workoutFooter}>
           <View style={styles.workoutMeta}>
-            <Text style={styles.workoutDifficulty}>{workout.difficulty}</Text>
-            <Text style={styles.workoutCalories}>{workout.calories} cal</Text>
+            <Text style={[styles.workoutDifficulty, { color: getDifficultyColor(workout.difficulty) }]}>
+              {workout.difficulty}
+            </Text>
+            <Text style={styles.workoutCalories}>{workout.calories_burned || 0} cal</Text>
           </View>
           <Ionicons name="play-circle" size={32} color={Colors.text.primary} />
         </View>
@@ -169,9 +204,21 @@ export default function HomeScreen() {
               </TouchableOpacity>
             </View>
             <View style={styles.workoutsList}>
-              {workoutCards.map((workout) => (
-                <WorkoutCard key={workout.id} workout={workout} />
-              ))}
+              {loading ? (
+                // Show loading skeletons while loading
+                Array(3).fill(0).map((_, index) => (
+                  <View key={`skeleton-${index}`} style={[styles.workoutCard, { backgroundColor: Colors.background.tertiary, height: 150 }]} />
+                ))
+              ) : workoutTemplates.length > 0 ? (
+                workoutTemplates.map((workout) => (
+                  <WorkoutCard key={workout.id} workout={workout} />
+                ))
+              ) : (
+                <View style={styles.emptyStateContainer}>
+                  <Ionicons name="sad-outline" size={48} color={Colors.text.primary} />
+                  <Text style={styles.emptyStateText}>No workouts found</Text>
+                </View>
+              )}
             </View>
           </View>
         </Animated.View>
@@ -191,6 +238,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 60,
   },
+  emptyStateContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  emptyStateText: {
+    marginTop: 10,
+    color: Colors.text.primary as unknown as string,
+    fontSize: 16,
+  } as const,
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
