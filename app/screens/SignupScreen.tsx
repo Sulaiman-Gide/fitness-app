@@ -108,7 +108,7 @@ const SignupScreen = () => {
           pathname: "/login",
           params: { email: formData.email.trim() },
         });
-        return true; // Prevent default back behavior
+        return true;
       };
 
       const backHandler = BackHandler.addEventListener(
@@ -164,7 +164,7 @@ const SignupScreen = () => {
         }, 2000);
       }
     } catch (error: any) {
-      console.error("Signup error:", error);
+      console.log("Signup error:", error);
       showToast("An unexpected error occurred", "error");
     } finally {
       setLoading(false);
